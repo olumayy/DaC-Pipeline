@@ -1,0 +1,8 @@
+title: Suspicious PowerShell EncodedCommand
+logsource:
+  product: windows
+detection:
+  selection:
+    EventID: 4688
+    CommandLine|contains: "EncodedCommand"
+condition: selection

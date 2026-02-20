@@ -22,19 +22,15 @@ jobs:
           pip install sigma-cli
           sigma plugin install elasticsearch
           
-      - name: Translate Sigma to Kibana Format
+      - name: Translate Sigma to Enterprise Format
         run: |
-          # We point sigma convert at the 'rules/' directory.
-          # We add '-p ecs_windows' to map generic fields to the Elastic Common Schema!
-          sigma convert -t lucene -p ecs_windows -f kibana_ndjson rules/ -o kibana_alerts.ndjson
+          # Note: We output as standard JSON now, not NDJSON
+          sigma convert -t lucene -p ecs_windows -f json rules/ -o kibana_alerts.json
           
-      - name: Deploy to Elastic Cloud (Production)
+      - name: Deploy to Detection Engine (Production)
         env:
           ELASTIC_URL: ${{ secrets.ELASTIC_URL }}
           ELASTIC_API_KEY: ${{ secrets.ELASTIC_API_KEY }}
         run: |
-          echo "Deploying rule to production ELK..."
-          curl -X POST "$ELASTIC_URL/api/saved_objects/_import" \
-          -H "kbn-xsrf: true" \
-          -H "Authorization: ApiKey $ELASTIC_API_KEY" \
-          --form file=@kibana_alerts.ndjson
+          pip install requests
+          python deploy_rules.py

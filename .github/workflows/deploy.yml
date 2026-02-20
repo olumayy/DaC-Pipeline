@@ -24,8 +24,8 @@ jobs:
           
       - name: Translate Sigma to Enterprise Format
         run: |
-          # Note: We output as standard JSON now, not NDJSON
-          sigma convert -t lucene -p ecs_windows -f json rules/ -o kibana_alerts.json
+          # We use the elasticsearch backend with 'json' format to get the raw query list
+          sigma convert -t elasticsearch -p ecs_windows -f json rules/ -o kibana_alerts.json
           
       - name: Deploy to Detection Engine (Production)
         env:

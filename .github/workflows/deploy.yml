@@ -17,14 +17,15 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install Sigma CLI
+      - name: Install Sigma CLI and Plugins
         run: |
           pip install sigma-cli
+          # Staff Tip: You MUST install the backend plugin in the CI environment!
           sigma plugin install elasticsearch
           
       - name: Translate Sigma to Enterprise Format
         run: |
-          # We use the elasticsearch backend with 'json' format to get the raw query list
+          # Now that the plugin is installed, 'elasticsearch' is a valid target
           sigma convert -t elasticsearch -p ecs_windows -f json rules/ -o kibana_alerts.json
           
       - name: Deploy to Detection Engine (Production)

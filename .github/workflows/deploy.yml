@@ -1,0 +1,40 @@
+name: Detection as Code Pipeline
+
+# 1. The Trigger: Run this pipeline every time code is pushed to the main branch
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  translate-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      # 2. Install the Sigma CLI tools and the Elastic translator
+      - name: Install Sigma CLI
+        run: |
+          pip install sigma-cli
+          sigma plugin install elasticsearch
+          
+      # 3. Translate the Sigma YAML into a Kibana-ready JSON file
+      - name: Translate Sigma to Kibana Format
+        run: |
+          sigma convert -t elasticsearch -f kibana_ndjson suspicious_powershell.yml -o kibana_alerts.ndjson
+          
+          echo "--- TRANSLATION SUCCESSFUL ---"
+          echo "Here is the raw Kibana alert payload:"
+          cat kibana_alerts.ndjson
+
+      # 4. The Deployment Phase (Simulated)
+      - name: Deploy to Elastic Cloud
+        run: |
+          echo "In a fully automated production environment, the pipeline uses your Elastic API Key to push the alert directly to your SIEM."
+          echo "Deployment Command: curl -X POST 'https://<YOUR-ELASTIC-CLOUD-URL>/api/saved_objects/_import' -H 'kbn-xsrf: true' -H 'Authorization: ApiKey ${{ secrets.ELASTIC_API }}' --form file=@kibana_alerts.ndjson"

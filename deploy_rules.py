@@ -19,12 +19,18 @@ def deploy():
         rule_object = json.loads(lines[0])
         attributes = rule_object.get("attributes", {})
         
-        # Extract the raw Lucene query string
-        query_data = attributes.get("query", "")
-        if isinstance(query_data, dict):
-            query_string = query_data.get("query", "")
-        else:
-            query_string = query_data
+        # Kibana Saved Objects hide the query inside a stringified JSON payload
+        search_source_str = attributes.get("kibanaSavedObjectMeta", {}).get("searchSourceJSON", "{}")
+        
+        # Convert that string back into a Python dictionary
+        search_source_json = json.loads(search_source_str)
+        
+        # Finally, extract the actual Lucene query
+        query_string = search_source_json.get("query", {}).get("query", "")
+        
+        if not query_string:
+            print("CRITICAL: Query string is empty. Aborting deployment to prevent alert storm!")
+            return
 
         rule_id = rule_object.get("id", "custom-dac-rule")
         title = attributes.get("title", "Unnamed Sigma Rule")

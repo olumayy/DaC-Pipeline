@@ -25,8 +25,8 @@ jobs:
       - name: Translate Sigma to Kibana Format
         run: |
           # We point sigma convert at the 'rules/' directory.
-          # It will automatically find and convert EVERY .yml rule inside it!
-          sigma convert -t lucene -f kibana_ndjson rules/ -o kibana_alerts.ndjson
+          # We add '-p ecs_windows' to map generic fields to the Elastic Common Schema!
+          sigma convert -t lucene -p ecs_windows -f kibana_ndjson rules/ -o kibana_alerts.ndjson
           
       - name: Deploy to Elastic Cloud (Production)
         env:

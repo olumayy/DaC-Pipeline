@@ -1,8 +1,32 @@
-title: Suspicious PowerShell EncodedCommand
+title: Suspicious PowerShell Encoded Command
+id: a23bb3d7-2195-4424-aa6c-0331034443ea
+status: experimental
+description: Detects the execution of PowerShell using the encoded command flag, a common technique for hiding malicious scripts.
+author: Your Name
+date: 2026-02-20
+
+# 1. Where should the SIEM look?
 logsource:
-  product: windows
+    category: process_creation
+    product: windows
+
+# 2. What exactly are we looking for?
 detection:
-  selection:
-    EventID: 4688
-    CommandLine|contains: "EncodedCommand"
-condition: selection
+    selection:
+        # Look for the PowerShell executable
+        Image|endswith: '\powershell.exe'
+        # Check if the command line contains encoding flags
+        CommandLine|contains:
+            - ' -e '
+            - ' -en '
+            - ' -enc '
+            - ' -EncodedCommand '
+    
+    # 3. When should the alert fire?
+    condition: selection
+
+# 4. How severe is this?
+level: high
+tags:
+    - attack.execution
+    - attack.t1059.001

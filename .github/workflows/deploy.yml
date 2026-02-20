@@ -25,8 +25,8 @@ jobs:
           
       - name: Translate Sigma to Enterprise Format
         run: |
-          # Now that the plugin is installed, 'elasticsearch' is a valid target
-          sigma convert -t elasticsearch -p ecs_windows -f json rules/ -o kibana_alerts.json
+          # We use the correct target 'lucene' and output the proven 'kibana_ndjson'
+          sigma convert -t lucene -p ecs_windows -f kibana_ndjson rules/ -o kibana_alerts.ndjson
           
       - name: Deploy to Detection Engine (Production)
         env:

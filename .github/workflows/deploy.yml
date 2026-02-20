@@ -17,21 +17,14 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install Sigma CLI and Plugins
+      - name: Install Dependencies
         run: |
-          pip install sigma-cli
-          # Staff Tip: You MUST install the backend plugin in the CI environment!
+          pip install sigma-cli requests pyyaml
           sigma plugin install elasticsearch
-          
-      - name: Translate Sigma to Enterprise Format
-        run: |
-          # We use the correct target 'lucene' and output the proven 'kibana_ndjson'
-          sigma convert -t lucene -p ecs_windows -f kibana_ndjson rules/ -o kibana_alerts.ndjson
           
       - name: Deploy to Detection Engine (Production)
         env:
           ELASTIC_URL: ${{ secrets.ELASTIC_URL }}
           ELASTIC_API_KEY: ${{ secrets.ELASTIC_API_KEY }}
         run: |
-          pip install requests
           python deploy_rules.py

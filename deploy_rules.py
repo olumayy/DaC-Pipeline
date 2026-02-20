@@ -1,46 +1,43 @@
 import os
-import json
+import yaml
 import requests
+import subprocess
 
 ELASTIC_URL = os.getenv('ELASTIC_URL')
 API_KEY = os.getenv('ELASTIC_API_KEY')
 
 def deploy():
-    if not os.path.exists('kibana_alerts.ndjson'):
-        print("Error: Translated NDJSON file not found!")
-        return
-
-    # 1. Read the NDJSON file (Newline Delimited JSON)
-    with open('kibana_alerts.ndjson', 'r') as f:
-        lines = f.readlines()
-
-    # 2. Parse the first rule
+    # In a fully scaled environment, we would loop through every file in the rules/ folder.
+    # For now, we point it directly at your file.
+    rule_file = 'rules/suspicious_powershell.yml'
+    
+    # 1. Read the raw Sigma YAML for metadata
     try:
-        rule_object = json.loads(lines[0])
-        attributes = rule_object.get("attributes", {})
-        
-        # Kibana Saved Objects hide the query inside a stringified JSON payload
-        search_source_str = attributes.get("kibanaSavedObjectMeta", {}).get("searchSourceJSON", "{}")
-        
-        # Convert that string back into a Python dictionary
-        search_source_json = json.loads(search_source_str)
-        
-        # Finally, extract the actual Lucene query
-        query_string = search_source_json.get("query", {}).get("query", "")
-        
-        if not query_string:
-            print("CRITICAL: Query string is empty. Aborting deployment to prevent alert storm!")
-            return
-
-        rule_id = rule_object.get("id", "custom-dac-rule")
-        title = attributes.get("title", "Unnamed Sigma Rule")
-        description = attributes.get("description", "Deployed via DaC Pipeline")
-        
+        with open(rule_file, 'r') as f:
+            sigma_rule = yaml.safe_load(f)
     except Exception as e:
-        print(f"Error parsing NDJSON: {e}")
+        print(f"❌ Failed to read YAML file: {e}")
         return
+        
+    title = sigma_rule.get('title', 'Unnamed Rule')
+    description = sigma_rule.get('description', 'Deployed via DaC Pipeline')
+    rule_id = sigma_rule.get('id', 'custom-dac-rule')
+    
+    # 2. Ask Sigma CLI to translate ONLY the query string (bypassing JSON wrappers)
+    print(f"Translating logic for: {title}...")
+    command = f"sigma convert -t lucene -p ecs_windows {rule_file}"
+    
+    # Execute the CLI command directly from Python
+    process = subprocess.run(command, shell=True, capture_output=True, text=True)
+    query_string = process.stdout.strip()
+    
+    if not query_string or "Error" in query_string:
+        print(f"❌ Failed to extract raw query! CLI Output: {query_string}")
+        exit(1)
+        
+    print(f"✅ Successfully extracted query: {query_string}")
 
-    # 3. Build the strict Detection Engine Payload
+    # 3. Build the pristine Elastic API Payload
     payload = {
         "name": f"DaC - {title}",
         "type": "query",
@@ -56,7 +53,7 @@ def deploy():
         "tags": ["Detection-as-Code"]
     }
 
-    # 4. Ship it to the Production API
+    # 4. The Upsert Logic
     url = f"{ELASTIC_URL}/api/detection_engine/rules"
     headers = {
         "Content-Type": "application/json",
@@ -65,27 +62,23 @@ def deploy():
     }
 
     print(f"Deploying Enterprise Rule: {payload['name']}...")
-    
-    # Attempt to Create (POST)
     response = requests.post(url, headers=headers, json=payload)
     
     if response.status_code == 200:
         print("✅ Successfully created new rule!")
     elif response.status_code == 409:
         print("⚠️ Rule already exists. Attempting to Update (PUT)...")
-        
-        # If it exists, Elastic requires a PUT request targeted at the specific rule_id
         update_url = f"{url}?rule_id={payload['rule_id']}"
         update_response = requests.put(update_url, headers=headers, json=payload)
         
         if update_response.status_code == 200:
-            print("✅ Successfully updated the existing rule!")
+            print("✅ Successfully updated the existing rule with the proper query!")
         else:
             print(f"❌ Update Failed! Status: {update_response.status_code}, Response: {update_response.text}")
-            exit(1) # Force GitHub Actions to show a red 'X' if it fails
+            exit(1)
     else:
         print(f"❌ Creation Failed! Status: {response.status_code}, Response: {response.text}")
-        exit(1) # Force GitHub Actions to show a red 'X' if it fails
+        exit(1)
 
 if __name__ == "__main__":
     deploy()

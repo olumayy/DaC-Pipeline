@@ -65,14 +65,27 @@ def deploy():
     }
 
     print(f"Deploying Enterprise Rule: {payload['name']}...")
+    
+    # Attempt to Create (POST)
     response = requests.post(url, headers=headers, json=payload)
     
     if response.status_code == 200:
-        print("✅ Successfully deployed to Detection Engine!")
+        print("✅ Successfully created new rule!")
     elif response.status_code == 409:
-        print("⚠️ Rule already exists. (To update rules, we would use a PUT request here).")
+        print("⚠️ Rule already exists. Attempting to Update (PUT)...")
+        
+        # If it exists, Elastic requires a PUT request targeted at the specific rule_id
+        update_url = f"{url}?rule_id={payload['rule_id']}"
+        update_response = requests.put(update_url, headers=headers, json=payload)
+        
+        if update_response.status_code == 200:
+            print("✅ Successfully updated the existing rule!")
+        else:
+            print(f"❌ Update Failed! Status: {update_response.status_code}, Response: {update_response.text}")
+            exit(1) # Force GitHub Actions to show a red 'X' if it fails
     else:
-        print(f"❌ Failed! Status: {response.status_code}, Response: {response.text}")
+        print(f"❌ Creation Failed! Status: {response.status_code}, Response: {response.text}")
+        exit(1) # Force GitHub Actions to show a red 'X' if it fails
 
 if __name__ == "__main__":
     deploy()

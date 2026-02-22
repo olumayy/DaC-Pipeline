@@ -1,0 +1,29 @@
+title: Suspicious Whoami Execution
+id: b1234567-89ab-cdef-0123-456789abcdef
+status: experimental
+description: Detects the execution of PowerShell using the encoded command flag, a common technique for hiding malicious scripts.
+author: Olu Mayy
+date: 2026-02-20
+
+# 1. Where should the SIEM look?
+logsource:
+    category: process_creation
+    product: windows
+
+# 2. What exactly are we looking for?
+detection:
+    selection:
+        # Look for the PowerShell executable
+        Image|endswith: '\powershell.exe'
+        # Check if the command line contains encoding flags
+        CommandLine|contains:
+            - 'whoami'
+    
+    # 3. When should the alert fire?
+    condition: selection
+
+# 4. How severe is this?
+level: high
+tags:
+    - attack.execution
+    - attack.t1059.001

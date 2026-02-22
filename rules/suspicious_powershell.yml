@@ -2,7 +2,7 @@ title: Suspicious PowerShell Encoded Command
 id: a23bb3d7-2195-4424-aa6c-0331034443ea
 status: experimental
 description: Detects the execution of PowerShell using the encoded command flag, a common technique for hiding malicious scripts.
-author: Your Name
+author: Olu Mayy
 date: 2026-02-20
 
 # 1. Where should the SIEM look?
